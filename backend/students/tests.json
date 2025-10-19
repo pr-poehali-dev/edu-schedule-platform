@@ -1,0 +1,14 @@
+{
+  "tests": [
+    {
+      "name": "Test get all students",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "students": "array"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

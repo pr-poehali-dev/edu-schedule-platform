@@ -1,14 +1,554 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import Icon from '@/components/ui/icon';
+import { useToast } from '@/hooks/use-toast';
 
-const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 color-black text-black">Добро пожаловать!</h1>
-        <p className="text-xl text-gray-600">тут будет отображаться ваш проект</p>
-      </div>
-    </div>
-  );
+const API = {
+  auth: 'https://functions.poehali.dev/2bd41eec-d707-4ea0-b6c3-a27e34ea7426',
+  schedule: 'https://functions.poehali.dev/c4ca2d02-3180-41b7-b275-4bdd0b1bc57c',
+  students: 'https://functions.poehali.dev/dd6e389e-d8ff-4db7-81fa-a08cae762011'
 };
 
-export default Index;
+interface User {
+  id: number;
+  email: string;
+  role: 'admin' | 'student';
+  full_name?: string;
+}
+
+interface Schedule {
+  id: number;
+  day_of_week: string;
+  time_start: string;
+  time_end: string;
+  subject: string;
+  teacher: string;
+  notes?: string;
+}
+
+interface Student {
+  id: number;
+  email: string;
+  full_name?: string;
+}
+
+const DAYS = [
+  { value: 'monday', label: 'Понедельник' },
+  { value: 'tuesday', label: 'Вторник' },
+  { value: 'wednesday', label: 'Среда' },
+  { value: 'thursday', label: 'Четверг' },
+  { value: 'friday', label: 'Пятница' },
+  { value: 'saturday', label: 'Суббота' },
+  { value: 'sunday', label: 'Воскресенье' }
+];
+
+export default function Index() {
+  const [user, setUser] = useState<User | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const { toast } = useToast();
+
+  const [scheduleForm, setScheduleForm] = useState({
+    day_of_week: 'monday',
+    time_start: '',
+    time_end: '',
+    subject: '',
+    teacher: '',
+    notes: ''
+  });
+
+  const [studentForm, setStudentForm] = useState({
+    email: '',
+    password: '',
+    full_name: ''
+  });
+
+  useEffect(() => {
+    if (user) {
+      loadSchedules();
+      if (user.role === 'admin') {
+        loadStudents();
+      }
+    }
+  }, [user]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(API.auth, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setUser(data.user);
+        toast({ title: 'Вход выполнен!', description: `Добро пожаловать, ${data.user.email}` });
+      } else {
+        toast({ title: 'Ошибка', description: data.message, variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось войти', variant: 'destructive' });
+    }
+  };
+
+  const loadSchedules = async () => {
+    try {
+      const response = await fetch(API.schedule);
+      const data = await response.json();
+      setSchedules(data.schedules || []);
+    } catch (error) {
+      console.error('Failed to load schedules', error);
+    }
+  };
+
+  const loadStudents = async () => {
+    try {
+      const response = await fetch(API.students);
+      const data = await response.json();
+      setStudents(data.students || []);
+    } catch (error) {
+      console.error('Failed to load students', error);
+    }
+  };
+
+  const handleCreateSchedule = async () => {
+    try {
+      const response = await fetch(API.schedule, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(scheduleForm)
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast({ title: 'Успешно!', description: 'Расписание создано' });
+        loadSchedules();
+        setIsScheduleDialogOpen(false);
+        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', teacher: '', notes: '' });
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось создать расписание', variant: 'destructive' });
+    }
+  };
+
+  const handleUpdateSchedule = async () => {
+    if (!editingSchedule) return;
+    try {
+      const response = await fetch(API.schedule, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...scheduleForm, id: editingSchedule.id })
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast({ title: 'Успешно!', description: 'Расписание обновлено' });
+        loadSchedules();
+        setIsScheduleDialogOpen(false);
+        setEditingSchedule(null);
+        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', teacher: '', notes: '' });
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось обновить расписание', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteSchedule = async (id: number) => {
+    try {
+      const response = await fetch(`${API.schedule}?id=${id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        toast({ title: 'Успешно!', description: 'Расписание удалено' });
+        loadSchedules();
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось удалить расписание', variant: 'destructive' });
+    }
+  };
+
+  const handleCreateStudent = async () => {
+    try {
+      const response = await fetch(API.students, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(studentForm)
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast({ title: 'Успешно!', description: 'Ученик создан' });
+        loadStudents();
+        setIsStudentDialogOpen(false);
+        setStudentForm({ email: '', password: '', full_name: '' });
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось создать ученика', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteStudent = async (id: number) => {
+    try {
+      const response = await fetch(`${API.students}?id=${id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        toast({ title: 'Успешно!', description: 'Ученик удален' });
+        loadStudents();
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось удалить ученика', variant: 'destructive' });
+    }
+  };
+
+  const openEditDialog = (schedule: Schedule) => {
+    setEditingSchedule(schedule);
+    setScheduleForm({
+      day_of_week: schedule.day_of_week,
+      time_start: schedule.time_start,
+      time_end: schedule.time_end,
+      subject: schedule.subject,
+      teacher: schedule.teacher,
+      notes: schedule.notes || ''
+    });
+    setIsScheduleDialogOpen(true);
+  };
+
+  const groupedSchedules = schedules.reduce((acc, schedule) => {
+    const day = schedule.day_of_week;
+    if (!acc[day]) acc[day] = [];
+    acc[day].push(schedule);
+    return acc;
+  }, {} as Record<string, Schedule[]>);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary via-secondary to-accent flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-2xl animate-scale-in">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center mb-4">
+              <Icon name="GraduationCap" size={32} className="text-white" />
+            </div>
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              Образовательная платформа
+            </CardTitle>
+            <CardDescription>Вход в систему</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="text"
+                  placeholder="Введите email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="transition-all focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Пароль</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Введите пароль"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="transition-all focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <Button type="submit" className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all">
+                <Icon name="LogIn" size={18} className="mr-2" />
+                Войти
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-orange-50">
+      <header className="bg-white/80 backdrop-blur-md shadow-md sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center">
+              <Icon name="GraduationCap" size={24} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                EduSchedule
+              </h1>
+              <p className="text-sm text-muted-foreground">{user.role === 'admin' ? 'Панель администратора' : 'Панель ученика'}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden sm:block">
+              <p className="font-semibold">{user.full_name || user.email}</p>
+              <p className="text-sm text-muted-foreground capitalize">{user.role}</p>
+            </div>
+            <Button variant="outline" onClick={() => setUser(null)} className="hover:bg-destructive hover:text-white transition-all">
+              <Icon name="LogOut" size={18} className="mr-2" />
+              Выход
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        {user.role === 'admin' && (
+          <div className="mb-8 flex flex-wrap gap-4">
+            <Dialog open={isScheduleDialogOpen} onOpenChange={(open) => {
+              setIsScheduleDialogOpen(open);
+              if (!open) {
+                setEditingSchedule(null);
+                setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', teacher: '', notes: '' });
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all shadow-lg">
+                  <Icon name="Plus" size={18} className="mr-2" />
+                  Добавить расписание
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>{editingSchedule ? 'Редактировать расписание' : 'Создать расписание'}</DialogTitle>
+                  <DialogDescription>Заполните информацию о занятии</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>День недели</Label>
+                    <Select value={scheduleForm.day_of_week} onValueChange={(value) => setScheduleForm({ ...scheduleForm, day_of_week: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DAYS.map(day => (
+                          <SelectItem key={day.value} value={day.value}>{day.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Время начала</Label>
+                      <Input
+                        type="time"
+                        value={scheduleForm.time_start}
+                        onChange={(e) => setScheduleForm({ ...scheduleForm, time_start: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Время окончания</Label>
+                      <Input
+                        type="time"
+                        value={scheduleForm.time_end}
+                        onChange={(e) => setScheduleForm({ ...scheduleForm, time_end: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Предмет</Label>
+                    <Input
+                      placeholder="Название предмета"
+                      value={scheduleForm.subject}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, subject: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Преподаватель</Label>
+                    <Input
+                      placeholder="ФИО преподавателя"
+                      value={scheduleForm.teacher}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, teacher: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Примечания</Label>
+                    <Textarea
+                      placeholder="Дополнительная информация"
+                      value={scheduleForm.notes}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, notes: e.target.value })}
+                    />
+                  </div>
+                  <Button
+                    onClick={editingSchedule ? handleUpdateSchedule : handleCreateSchedule}
+                    className="w-full bg-gradient-to-r from-primary to-secondary"
+                  >
+                    {editingSchedule ? 'Сохранить изменения' : 'Создать'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isStudentDialogOpen} onOpenChange={setIsStudentDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-secondary to-accent hover:opacity-90 transition-all shadow-lg">
+                  <Icon name="UserPlus" size={18} className="mr-2" />
+                  Добавить ученика
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Создать ученика</DialogTitle>
+                  <DialogDescription>Введите данные нового ученика</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input
+                      placeholder="student@example.com"
+                      value={studentForm.email}
+                      onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Пароль</Label>
+                    <Input
+                      type="password"
+                      placeholder="Пароль для входа"
+                      value={studentForm.password}
+                      onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>ФИО</Label>
+                    <Input
+                      placeholder="Полное имя"
+                      value={studentForm.full_name}
+                      onChange={(e) => setStudentForm({ ...studentForm, full_name: e.target.value })}
+                    />
+                  </div>
+                  <Button onClick={handleCreateStudent} className="w-full bg-gradient-to-r from-secondary to-accent">
+                    Создать
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
+
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <h2 className="text-3xl font-bold flex items-center gap-3">
+              <Icon name="Calendar" size={32} className="text-primary" />
+              Расписание занятий
+            </h2>
+
+            {DAYS.map(day => {
+              const daySchedules = groupedSchedules[day.value] || [];
+              if (daySchedules.length === 0) return null;
+
+              return (
+                <Card key={day.value} className="shadow-lg hover:shadow-xl transition-all animate-fade-in">
+                  <CardHeader className="bg-gradient-to-r from-primary/10 to-secondary/10">
+                    <CardTitle className="flex items-center gap-2">
+                      <Icon name="CalendarDays" size={24} className="text-primary" />
+                      {day.label}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-4">
+                    {daySchedules.map(schedule => (
+                      <div key={schedule.id} className="p-4 border rounded-lg hover:border-primary transition-all hover:shadow-md bg-gradient-to-r from-white to-purple-50/30">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-2">
+                            <Icon name="Clock" size={18} className="text-secondary" />
+                            <span className="font-semibold text-lg">
+                              {schedule.time_start} - {schedule.time_end}
+                            </span>
+                          </div>
+                          {user.role === 'admin' && (
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" onClick={() => openEditDialog(schedule)} className="hover:bg-primary hover:text-white">
+                                <Icon name="Pencil" size={16} />
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => handleDeleteSchedule(schedule.id)} className="hover:bg-destructive hover:text-white">
+                                <Icon name="Trash2" size={16} />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <h4 className="font-bold text-xl mb-2 text-primary">{schedule.subject}</h4>
+                        <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                          <Icon name="User" size={16} />
+                          <span>{schedule.teacher}</span>
+                        </div>
+                        {schedule.notes && (
+                          <div className="mt-3 p-3 bg-accent/10 rounded-md">
+                            <div className="flex items-start gap-2">
+                              <Icon name="StickyNote" size={16} className="text-accent mt-1" />
+                              <p className="text-sm">{schedule.notes}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {schedules.length === 0 && (
+              <Card className="shadow-lg">
+                <CardContent className="py-12 text-center">
+                  <Icon name="Calendar" size={64} className="mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground text-lg">Расписание пока не создано</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {user.role === 'admin' && (
+            <div className="space-y-6">
+              <h2 className="text-3xl font-bold flex items-center gap-3">
+                <Icon name="Users" size={32} className="text-secondary" />
+                Ученики
+              </h2>
+              <Card className="shadow-lg">
+                <CardContent className="pt-6 space-y-3">
+                  {students.map(student => (
+                    <div key={student.id} className="flex justify-between items-center p-3 border rounded-lg hover:border-secondary transition-all hover:shadow-md">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-secondary to-accent rounded-full flex items-center justify-center">
+                          <Icon name="User" size={20} className="text-white" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">{student.full_name || student.email}</p>
+                          <p className="text-sm text-muted-foreground">{student.email}</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteStudent(student.id)}
+                        className="hover:bg-destructive hover:text-white"
+                      >
+                        <Icon name="Trash2" size={16} />
+                      </Button>
+                    </div>
+                  ))}
+                  {students.length === 0 && (
+                    <div className="text-center py-8">
+                      <Icon name="Users" size={48} className="mx-auto text-muted-foreground mb-3" />
+                      <p className="text-muted-foreground">Нет учеников</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
