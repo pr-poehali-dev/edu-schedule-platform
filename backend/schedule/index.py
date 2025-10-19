@@ -73,13 +73,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             notes = body_data.get('notes', '')
             lesson_date = body_data.get('lesson_date', '')
             homework = body_data.get('homework', '')
+            homework_files = body_data.get('homework_files', '')
             
             subject_id_value = f"{subject_id}" if subject_id else "NULL"
             lesson_date_value = f"'{lesson_date}'" if lesson_date else "NULL"
             
             query = f"""
-                INSERT INTO schedule (day_of_week, time_start, time_end, subject, subject_id, teacher, notes, lesson_date, homework) 
-                VALUES ('{day}', '{time_start}', '{time_end}', '{subject}', {subject_id_value}, '{teacher}', '{notes}', {lesson_date_value}, '{homework}')
+                INSERT INTO schedule (day_of_week, time_start, time_end, subject, subject_id, teacher, notes, lesson_date, homework, homework_files) 
+                VALUES ('{day}', '{time_start}', '{time_end}', '{subject}', {subject_id_value}, '{teacher}', '{notes}', {lesson_date_value}, '{homework}', '{homework_files}')
                 RETURNING id
             """
             cur.execute(query)
@@ -112,6 +113,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             notes = body_data.get('notes', '')
             lesson_date = body_data.get('lesson_date', '')
             homework = body_data.get('homework', '')
+            homework_files = body_data.get('homework_files', '')
             
             subject_id_value = f"{subject_id}" if subject_id else "NULL"
             lesson_date_value = f"'{lesson_date}'" if lesson_date else "NULL"
@@ -119,7 +121,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             query = f"""
                 UPDATE schedule 
                 SET day_of_week = '{day}', time_start = '{time_start}', time_end = '{time_end}',
-                    subject = '{subject}', subject_id = {subject_id_value}, teacher = '{teacher}', notes = '{notes}', lesson_date = {lesson_date_value}, homework = '{homework}'
+                    subject = '{subject}', subject_id = {subject_id_value}, teacher = '{teacher}', notes = '{notes}', lesson_date = {lesson_date_value}, homework = '{homework}', homework_files = '{homework_files}'
                 WHERE id = {schedule_id}
             """
             cur.execute(query)

@@ -1,0 +1,1 @@
+ALTER TABLE schedule ADD COLUMN IF NOT EXISTS homework_files TEXT;

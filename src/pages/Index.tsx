@@ -37,6 +37,7 @@ interface Schedule {
   notes?: string;
   lesson_date?: string;
   homework?: string;
+  homework_files?: string;
 }
 
 interface Subject {
@@ -80,6 +81,7 @@ export default function Index() {
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
   const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const [duplicateWeekDate, setDuplicateWeekDate] = useState('');
+  const [homeworkFiles, setHomeworkFiles] = useState<File[]>([]);
   const { toast } = useToast();
 
   const [scheduleForm, setScheduleForm] = useState({
@@ -91,7 +93,8 @@ export default function Index() {
     teacher: '',
     notes: '',
     lesson_date: '',
-    homework: ''
+    homework: '',
+    homework_files: ''
   });
 
   const [studentForm, setStudentForm] = useState({
@@ -169,17 +172,34 @@ export default function Index() {
 
   const handleCreateSchedule = async () => {
     try {
+      let filesData = '';
+      if (homeworkFiles.length > 0) {
+        const filePromises = homeworkFiles.map(file => {
+          return new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const base64 = e.target?.result as string;
+              resolve(JSON.stringify({ name: file.name, type: file.type, data: base64 }));
+            };
+            reader.readAsDataURL(file);
+          });
+        });
+        const fileResults = await Promise.all(filePromises);
+        filesData = `[${fileResults.join(',')}]`;
+      }
+
       const response = await fetch(API.schedule, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(scheduleForm)
+        body: JSON.stringify({ ...scheduleForm, homework_files: filesData })
       });
       const data = await response.json();
       if (data.success) {
         toast({ title: 'Успешно!', description: 'Расписание создано' });
         loadSchedules();
         setIsScheduleDialogOpen(false);
-        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '', homework: '' });
+        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '', homework: '', homework_files: '' });
+        setHomeworkFiles([]);
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось создать расписание', variant: 'destructive' });
@@ -200,7 +220,8 @@ export default function Index() {
         loadSchedules();
         setIsScheduleDialogOpen(false);
         setEditingSchedule(null);
-        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '', homework: '' });
+        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '', homework: '', homework_files: '' });
+        setHomeworkFiles([]);
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось обновить расписание', variant: 'destructive' });
@@ -366,7 +387,8 @@ export default function Index() {
       teacher: schedule.teacher,
       notes: schedule.notes || '',
       lesson_date: schedule.lesson_date || '',
-      homework: schedule.homework || ''
+      homework: schedule.homework || '',
+      homework_files: schedule.homework_files || ''
     });
     setIsScheduleDialogOpen(true);
   };
@@ -509,7 +531,8 @@ export default function Index() {
               setIsScheduleDialogOpen(open);
               if (!open) {
                 setEditingSchedule(null);
-                setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '' });
+                setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '', homework: '', homework_files: '' });
+                setHomeworkFiles([]);
               }
             }}>
               <DialogTrigger asChild>
@@ -609,6 +632,24 @@ export default function Index() {
                       onChange={(e) => setScheduleForm({ ...scheduleForm, homework: e.target.value })}
                       rows={2}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Файлы к ДЗ (необязательно)</Label>
+                    <Input
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.txt"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setHomeworkFiles(files);
+                      }}
+                      className="cursor-pointer"
+                    />
+                    {homeworkFiles.length > 0 && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Выбрано файлов: {homeworkFiles.length} ({homeworkFiles.map(f => f.name).join(', ')})
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Примечания</Label>
@@ -967,7 +1008,24 @@ export default function Index() {
                           <div className="mt-3 p-3 bg-orange-50 rounded-md border border-orange-200">
                             <div className="flex items-start gap-2">
                               <Icon name="BookOpen" size={16} className="text-orange-600 mt-1" />
-                              <p className="text-sm text-orange-900">{schedule.homework}</p>
+                              <div className="flex-1">
+                                <p className="text-sm text-orange-900">{schedule.homework}</p>
+                                {schedule.homework_files && JSON.parse(schedule.homework_files).length > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    {JSON.parse(schedule.homework_files).map((file: any, idx: number) => (
+                                      <a 
+                                        key={idx}
+                                        href={file.data}
+                                        download={file.name}
+                                        className="flex items-center gap-2 text-xs text-orange-700 hover:text-orange-900 hover:underline"
+                                      >
+                                        <Icon name="Paperclip" size={12} />
+                                        {file.name}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}
