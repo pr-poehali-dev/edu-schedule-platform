@@ -865,10 +865,7 @@ export default function Index() {
 
           {user.role === 'admin' && (
             <div className="space-y-6">
-              <h2 className="text-3xl font-bold flex items-center gap-3">
-                <Icon name="Users" size={32} className="text-secondary" />
-                Ученики
-              </h2>
+              <h2 className="text-3xl font-bold flex items-center gap-3">Классы</h2>
               <Card className="shadow-lg">
                 <CardContent className="pt-6 space-y-3">
                   {students.map(student => (
