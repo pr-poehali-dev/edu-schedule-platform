@@ -72,6 +72,8 @@ export default function Index() {
   const [isSubjectDialogOpen, setIsSubjectDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+  const [showOnlyUpcoming, setShowOnlyUpcoming] = useState(true);
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
   const { toast } = useToast();
 
   const [scheduleForm, setScheduleForm] = useState({
@@ -318,7 +320,34 @@ export default function Index() {
     setIsSubjectDialogOpen(true);
   };
 
-  const groupedSchedules = schedules.reduce((acc, schedule) => {
+  const getFilteredSchedules = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return schedules.filter(schedule => {
+      if (selectedDateFilter) {
+        const filterDate = new Date(selectedDateFilter);
+        filterDate.setHours(0, 0, 0, 0);
+        
+        if (schedule.lesson_date) {
+          const lessonDate = new Date(schedule.lesson_date);
+          lessonDate.setHours(0, 0, 0, 0);
+          return lessonDate.getTime() === filterDate.getTime();
+        }
+        return false;
+      }
+
+      if (showOnlyUpcoming && schedule.lesson_date) {
+        const lessonDate = new Date(schedule.lesson_date);
+        lessonDate.setHours(0, 0, 0, 0);
+        return lessonDate >= today;
+      }
+
+      return true;
+    });
+  };
+
+  const groupedSchedules = getFilteredSchedules().reduce((acc, schedule) => {
     const day = schedule.day_of_week;
     if (!acc[day]) acc[day] = [];
     acc[day].push(schedule);
@@ -674,10 +703,69 @@ export default function Index() {
 
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <h2 className="text-3xl font-bold flex items-center gap-3">
-              <Icon name="Calendar" size={32} className="text-primary" />
-              Расписание занятий
-            </h2>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              <h2 className="text-3xl font-bold flex items-center gap-3">
+                <Icon name="Calendar" size={32} className="text-primary" />
+                Расписание занятий
+              </h2>
+              
+              <div className="flex flex-wrap gap-3 items-center">
+                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border shadow-sm">
+                  <input
+                    type="checkbox"
+                    id="upcoming-filter"
+                    checked={showOnlyUpcoming}
+                    onChange={(e) => {
+                      setShowOnlyUpcoming(e.target.checked);
+                      if (e.target.checked) setSelectedDateFilter('');
+                    }}
+                    className="w-4 h-4 text-primary rounded focus:ring-2 focus:ring-primary cursor-pointer"
+                  />
+                  <label htmlFor="upcoming-filter" className="text-sm font-medium cursor-pointer whitespace-nowrap">
+                    Только актуальные
+                  </label>
+                </div>
+                
+                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border shadow-sm">
+                  <Icon name="Search" size={16} className="text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={selectedDateFilter}
+                    onChange={(e) => {
+                      setSelectedDateFilter(e.target.value);
+                      if (e.target.value) setShowOnlyUpcoming(false);
+                    }}
+                    className="border-0 h-auto p-0 focus-visible:ring-0 text-sm w-36"
+                    placeholder="Фильтр по дате"
+                  />
+                  {selectedDateFilter && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedDateFilter('')}
+                      className="h-5 w-5 p-0"
+                    >
+                      <Icon name="X" size={14} />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {Object.keys(groupedSchedules).length === 0 && (
+              <Card className="shadow-lg">
+                <CardContent className="py-12 text-center">
+                  <Icon name="CalendarOff" size={48} className="mx-auto text-muted-foreground mb-4" />
+                  <p className="text-lg text-muted-foreground">
+                    {selectedDateFilter 
+                      ? 'На выбранную дату занятий не найдено' 
+                      : showOnlyUpcoming 
+                        ? 'Актуальных занятий не найдено' 
+                        : 'Расписание пусто'}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             {DAYS.map(day => {
               const daySchedules = groupedSchedules[day.value] || [];
