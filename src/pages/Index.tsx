@@ -368,7 +368,7 @@ export default function Index() {
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Логин/Email</Label>
                 <Input
                   id="email"
                   type="text"
