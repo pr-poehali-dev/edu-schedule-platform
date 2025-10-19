@@ -284,9 +284,7 @@ export default function Index() {
               <Icon name="GraduationCap" size={24} className="text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                EduSchedule
-              </h1>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Расписание "Лицей №22"</h1>
               <p className="text-sm text-muted-foreground">{user.role === 'admin' ? 'Панель администратора' : 'Панель ученика'}</p>
             </div>
           </div>
