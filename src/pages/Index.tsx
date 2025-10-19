@@ -13,7 +13,8 @@ const API = {
   auth: 'https://functions.poehali.dev/2bd41eec-d707-4ea0-b6c3-a27e34ea7426',
   schedule: 'https://functions.poehali.dev/c4ca2d02-3180-41b7-b275-4bdd0b1bc57c',
   students: 'https://functions.poehali.dev/dd6e389e-d8ff-4db7-81fa-a08cae762011',
-  subjects: 'https://functions.poehali.dev/23625e02-9283-47f9-b147-bf10a36eff63'
+  subjects: 'https://functions.poehali.dev/23625e02-9283-47f9-b147-bf10a36eff63',
+  school: 'https://functions.poehali.dev/32e5b8ba-6e8a-4e51-afef-0e53a4e7daf6'
 };
 
 interface User {
@@ -50,6 +51,16 @@ interface Student {
   full_name?: string;
 }
 
+interface Homework {
+  id: number;
+  subject_id: number;
+  subject_name?: string;
+  title: string;
+  description: string;
+  due_date: string;
+  created_at: string;
+}
+
 const DAYS = [
   { value: 'monday', label: 'Понедельник' },
   { value: 'tuesday', label: 'Вторник' },
@@ -67,9 +78,11 @@ export default function Index() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [isSubjectDialogOpen, setIsSubjectDialogOpen] = useState(false);
+  const [isHomeworkDialogOpen, setIsHomeworkDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [showOnlyUpcoming, setShowOnlyUpcoming] = useState(true);
@@ -98,10 +111,18 @@ export default function Index() {
     color: '#3b82f6'
   });
 
+  const [homeworkForm, setHomeworkForm] = useState({
+    subject_id: '',
+    title: '',
+    description: '',
+    due_date: ''
+  });
+
   useEffect(() => {
     if (user) {
       loadSchedules();
       loadSubjects();
+      loadHomeworks();
       if (user.role === 'admin') {
         loadStudents();
       }
@@ -296,6 +317,48 @@ export default function Index() {
     }
   };
 
+  const loadHomeworks = async () => {
+    try {
+      const response = await fetch(`${API.school}?entity=homework`);
+      const data = await response.json();
+      setHomeworks(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to load homeworks', error);
+    }
+  };
+
+  const handleCreateHomework = async () => {
+    try {
+      const response = await fetch(`${API.school}?entity=homework`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(homeworkForm)
+      });
+      const data = await response.json();
+      if (data.id) {
+        toast({ title: 'Успешно!', description: 'Домашнее задание создано' });
+        loadHomeworks();
+        setIsHomeworkDialogOpen(false);
+        setHomeworkForm({ subject_id: '', title: '', description: '', due_date: '' });
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось создать ДЗ', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteHomework = async (id: number) => {
+    try {
+      const response = await fetch(`${API.school}?entity=homework&id=${id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        toast({ title: 'Успешно!', description: 'Домашнее задание удалено' });
+        loadHomeworks();
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось удалить ДЗ', variant: 'destructive' });
+    }
+  };
+
   const openEditDialog = (schedule: Schedule) => {
     setEditingSchedule(schedule);
     setScheduleForm({
@@ -426,7 +489,7 @@ export default function Index() {
             </div>
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Расписание "Лицей №22"</h1>
-              <p className="text-sm text-muted-foreground">{user.role === 'admin' ? 'Панель администратора' : 'Панель ученика'}</p>
+              <p className="text-sm text-muted-foreground">{user.role === 'admin' ? 'Администратор + Учитель' : 'Панель ученика'}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -711,6 +774,72 @@ export default function Index() {
                 </div>
               </DialogContent>
             </Dialog>
+
+            <Dialog open={isHomeworkDialogOpen} onOpenChange={(open) => {
+              setIsHomeworkDialogOpen(open);
+              if (!open) setHomeworkForm({ subject_id: '', title: '', description: '', due_date: '' });
+            }}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-green-500 to-teal-600 hover:opacity-90 transition-all shadow-lg">
+                  <Icon name="BookOpen" size={18} className="mr-2" />
+                  Добавить ДЗ
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Создать домашнее задание</DialogTitle>
+                  <DialogDescription>Укажите предмет, описание и срок сдачи</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Предмет</Label>
+                    <Select value={homeworkForm.subject_id} onValueChange={(value) => setHomeworkForm({ ...homeworkForm, subject_id: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите предмет" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjects.map(subject => (
+                          <SelectItem key={subject.id} value={subject.id.toString()}>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: subject.color }}></div>
+                              {subject.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Название</Label>
+                    <Input
+                      placeholder="Например: Параграф 15, упражнения 1-5"
+                      value={homeworkForm.title}
+                      onChange={(e) => setHomeworkForm({ ...homeworkForm, title: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Описание</Label>
+                    <Textarea
+                      placeholder="Детальное описание задания"
+                      value={homeworkForm.description}
+                      onChange={(e) => setHomeworkForm({ ...homeworkForm, description: e.target.value })}
+                      rows={4}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Срок сдачи</Label>
+                    <Input
+                      type="date"
+                      value={homeworkForm.due_date}
+                      onChange={(e) => setHomeworkForm({ ...homeworkForm, due_date: e.target.value })}
+                    />
+                  </div>
+                  <Button onClick={handleCreateHomework} className="w-full bg-gradient-to-r from-green-500 to-teal-600">
+                    Создать ДЗ
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
 
@@ -911,6 +1040,44 @@ export default function Index() {
                     <div className="text-center py-8">
                       <Icon name="Users" size={48} className="mx-auto text-muted-foreground mb-3" />
                       <p className="text-muted-foreground">Нет учеников</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <h2 className="text-3xl font-bold flex items-center gap-3 mt-8">
+                <Icon name="BookOpen" size={32} className="text-green-600" />
+                Домашние задания
+              </h2>
+              <Card className="shadow-lg">
+                <CardContent className="pt-6 space-y-3">
+                  {homeworks.map(hw => (
+                    <div key={hw.id} className="p-4 border rounded-lg hover:border-green-500 transition-all hover:shadow-md bg-gradient-to-r from-white to-green-50/30">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-lg text-green-700">{hw.title}</h4>
+                          <p className="text-sm text-muted-foreground">{hw.subject_name}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteHomework(hw.id)}
+                          className="hover:bg-destructive hover:text-white"
+                        >
+                          <Icon name="Trash2" size={16} />
+                        </Button>
+                      </div>
+                      <p className="text-sm mb-2">{hw.description}</p>
+                      <div className="flex items-center gap-2 text-sm text-orange-600 font-medium">
+                        <Icon name="Clock" size={14} />
+                        Сдать до: {new Date(hw.due_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </div>
+                    </div>
+                  ))}
+                  {homeworks.length === 0 && (
+                    <div className="text-center py-8">
+                      <Icon name="BookOpen" size={48} className="mx-auto text-muted-foreground mb-3" />
+                      <p className="text-muted-foreground">Домашние задания не созданы</p>
                     </div>
                   )}
                 </CardContent>
