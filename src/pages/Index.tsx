@@ -230,7 +230,7 @@ export default function Index() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary via-secondary to-accent flex items-center justify-center p-4">
+      <div className="min-h-screen from-primary via-secondary to-accent flex items-center justify-center p-4 bg-slate-50">
         <Card className="w-full max-w-md shadow-2xl animate-scale-in">
           <CardHeader className="text-center">
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center mb-4">
