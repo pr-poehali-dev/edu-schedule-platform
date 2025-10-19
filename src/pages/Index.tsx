@@ -36,6 +36,7 @@ interface Schedule {
   teacher: string;
   notes?: string;
   lesson_date?: string;
+  homework?: string;
 }
 
 interface Subject {
@@ -51,15 +52,7 @@ interface Student {
   full_name?: string;
 }
 
-interface Homework {
-  id: number;
-  subject_id: number;
-  subject_name?: string;
-  title: string;
-  description: string;
-  due_date: string;
-  created_at: string;
-}
+
 
 const DAYS = [
   { value: 'monday', label: 'Понедельник' },
@@ -78,11 +71,9 @@ export default function Index() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [isSubjectDialogOpen, setIsSubjectDialogOpen] = useState(false);
-  const [isHomeworkDialogOpen, setIsHomeworkDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [showOnlyUpcoming, setShowOnlyUpcoming] = useState(true);
@@ -97,7 +88,8 @@ export default function Index() {
     subject_id: '',
     teacher: '',
     notes: '',
-    lesson_date: ''
+    lesson_date: '',
+    homework: ''
   });
 
   const [studentForm, setStudentForm] = useState({
@@ -111,18 +103,12 @@ export default function Index() {
     color: '#3b82f6'
   });
 
-  const [homeworkForm, setHomeworkForm] = useState({
-    subject_id: '',
-    title: '',
-    description: '',
-    due_date: ''
-  });
+
 
   useEffect(() => {
     if (user) {
       loadSchedules();
       loadSubjects();
-      loadHomeworks();
       if (user.role === 'admin') {
         loadStudents();
       }
@@ -191,7 +177,7 @@ export default function Index() {
         toast({ title: 'Успешно!', description: 'Расписание создано' });
         loadSchedules();
         setIsScheduleDialogOpen(false);
-        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '' });
+        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '', homework: '' });
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось создать расписание', variant: 'destructive' });
@@ -212,7 +198,7 @@ export default function Index() {
         loadSchedules();
         setIsScheduleDialogOpen(false);
         setEditingSchedule(null);
-        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '' });
+        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '', homework: '' });
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось обновить расписание', variant: 'destructive' });
@@ -317,47 +303,7 @@ export default function Index() {
     }
   };
 
-  const loadHomeworks = async () => {
-    try {
-      const response = await fetch(`${API.school}?entity=homework`);
-      const data = await response.json();
-      setHomeworks(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to load homeworks', error);
-    }
-  };
 
-  const handleCreateHomework = async () => {
-    try {
-      const response = await fetch(`${API.school}?entity=homework`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(homeworkForm)
-      });
-      const data = await response.json();
-      if (data.id) {
-        toast({ title: 'Успешно!', description: 'Домашнее задание создано' });
-        loadHomeworks();
-        setIsHomeworkDialogOpen(false);
-        setHomeworkForm({ subject_id: '', title: '', description: '', due_date: '' });
-      }
-    } catch (error) {
-      toast({ title: 'Ошибка', description: 'Не удалось создать ДЗ', variant: 'destructive' });
-    }
-  };
-
-  const handleDeleteHomework = async (id: number) => {
-    try {
-      const response = await fetch(`${API.school}?entity=homework&id=${id}`, { method: 'DELETE' });
-      const data = await response.json();
-      if (data.success) {
-        toast({ title: 'Успешно!', description: 'Домашнее задание удалено' });
-        loadHomeworks();
-      }
-    } catch (error) {
-      toast({ title: 'Ошибка', description: 'Не удалось удалить ДЗ', variant: 'destructive' });
-    }
-  };
 
   const openEditDialog = (schedule: Schedule) => {
     setEditingSchedule(schedule);
@@ -369,7 +315,8 @@ export default function Index() {
       subject_id: schedule.subject_id?.toString() || '',
       teacher: schedule.teacher,
       notes: schedule.notes || '',
-      lesson_date: schedule.lesson_date || ''
+      lesson_date: schedule.lesson_date || '',
+      homework: schedule.homework || ''
     });
     setIsScheduleDialogOpen(true);
   };
@@ -605,6 +552,15 @@ export default function Index() {
                     <p className="text-xs text-muted-foreground">Оставьте пустым для регулярного занятия по дню недели</p>
                   </div>
                   <div className="space-y-2">
+                    <Label>Домашнее задание (необязательно)</Label>
+                    <Textarea
+                      placeholder="Например: учить п.15"
+                      value={scheduleForm.homework}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, homework: e.target.value })}
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Примечания</Label>
                     <Textarea
                       placeholder="Дополнительная информация"
@@ -775,71 +731,7 @@ export default function Index() {
               </DialogContent>
             </Dialog>
 
-            <Dialog open={isHomeworkDialogOpen} onOpenChange={(open) => {
-              setIsHomeworkDialogOpen(open);
-              if (!open) setHomeworkForm({ subject_id: '', title: '', description: '', due_date: '' });
-            }}>
-              <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-green-500 to-teal-600 hover:opacity-90 transition-all shadow-lg">
-                  <Icon name="BookOpen" size={18} className="mr-2" />
-                  Добавить ДЗ
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Создать домашнее задание</DialogTitle>
-                  <DialogDescription>Укажите предмет, описание и срок сдачи</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Предмет</Label>
-                    <Select value={homeworkForm.subject_id} onValueChange={(value) => setHomeworkForm({ ...homeworkForm, subject_id: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите предмет" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subjects.map(subject => (
-                          <SelectItem key={subject.id} value={subject.id.toString()}>
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: subject.color }}></div>
-                              {subject.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Название</Label>
-                    <Input
-                      placeholder="Например: Параграф 15, упражнения 1-5"
-                      value={homeworkForm.title}
-                      onChange={(e) => setHomeworkForm({ ...homeworkForm, title: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Описание</Label>
-                    <Textarea
-                      placeholder="Детальное описание задания"
-                      value={homeworkForm.description}
-                      onChange={(e) => setHomeworkForm({ ...homeworkForm, description: e.target.value })}
-                      rows={4}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Срок сдачи</Label>
-                    <Input
-                      type="date"
-                      value={homeworkForm.due_date}
-                      onChange={(e) => setHomeworkForm({ ...homeworkForm, due_date: e.target.value })}
-                    />
-                  </div>
-                  <Button onClick={handleCreateHomework} className="w-full bg-gradient-to-r from-green-500 to-teal-600">
-                    Создать ДЗ
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+
           </div>
         )}
 
@@ -985,6 +877,14 @@ export default function Index() {
                           <Icon name="User" size={16} />
                           <span>{schedule.teacher}</span>
                         </div>
+                        {schedule.homework && (
+                          <div className="mt-3 p-3 bg-orange-50 rounded-md border border-orange-200">
+                            <div className="flex items-start gap-2">
+                              <Icon name="BookOpen" size={16} className="text-orange-600 mt-1" />
+                              <p className="text-sm text-orange-900">{schedule.homework}</p>
+                            </div>
+                          </div>
+                        )}
                         {schedule.notes && (
                           <div className="mt-3 p-3 bg-accent/10 rounded-md">
                             <div className="flex items-start gap-2">
@@ -1045,43 +945,7 @@ export default function Index() {
                 </CardContent>
               </Card>
 
-              <h2 className="text-3xl font-bold flex items-center gap-3 mt-8">
-                <Icon name="BookOpen" size={32} className="text-green-600" />
-                Домашние задания
-              </h2>
-              <Card className="shadow-lg">
-                <CardContent className="pt-6 space-y-3">
-                  {homeworks.map(hw => (
-                    <div key={hw.id} className="p-4 border rounded-lg hover:border-green-500 transition-all hover:shadow-md bg-gradient-to-r from-white to-green-50/30">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1">
-                          <h4 className="font-bold text-lg text-green-700">{hw.title}</h4>
-                          <p className="text-sm text-muted-foreground">{hw.subject_name}</p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteHomework(hw.id)}
-                          className="hover:bg-destructive hover:text-white"
-                        >
-                          <Icon name="Trash2" size={16} />
-                        </Button>
-                      </div>
-                      <p className="text-sm mb-2">{hw.description}</p>
-                      <div className="flex items-center gap-2 text-sm text-orange-600 font-medium">
-                        <Icon name="Clock" size={14} />
-                        Сдать до: {new Date(hw.due_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </div>
-                    </div>
-                  ))}
-                  {homeworks.length === 0 && (
-                    <div className="text-center py-8">
-                      <Icon name="BookOpen" size={48} className="mx-auto text-muted-foreground mb-3" />
-                      <p className="text-muted-foreground">Домашние задания не созданы</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+
             </div>
           )}
         </div>
