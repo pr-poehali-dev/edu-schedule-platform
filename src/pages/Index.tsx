@@ -78,6 +78,8 @@ export default function Index() {
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [showOnlyUpcoming, setShowOnlyUpcoming] = useState(true);
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
+  const [duplicateWeekDate, setDuplicateWeekDate] = useState('');
   const { toast } = useToast();
 
   const [scheduleForm, setScheduleForm] = useState({
@@ -247,6 +249,54 @@ export default function Index() {
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось удалить ученика', variant: 'destructive' });
+    }
+  };
+
+  const handleDuplicateWeek = async () => {
+    if (!duplicateWeekDate) {
+      toast({ title: 'Ошибка', description: 'Укажите дату начала новой недели', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const targetDate = new Date(duplicateWeekDate);
+      const schedulesToDuplicate = schedules.filter(s => s.lesson_date);
+
+      if (schedulesToDuplicate.length === 0) {
+        toast({ title: 'Ошибка', description: 'Нет расписаний с датами для копирования', variant: 'destructive' });
+        return;
+      }
+
+      const earliestDate = new Date(Math.min(...schedulesToDuplicate.map(s => new Date(s.lesson_date!).getTime())));
+      const daysDiff = Math.floor((targetDate.getTime() - earliestDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      for (const schedule of schedulesToDuplicate) {
+        const originalDate = new Date(schedule.lesson_date!);
+        const newDate = new Date(originalDate.getTime() + daysDiff * 24 * 60 * 60 * 1000);
+
+        await fetch(API.schedule, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            day_of_week: schedule.day_of_week,
+            time_start: schedule.time_start,
+            time_end: schedule.time_end,
+            subject: schedule.subject,
+            subject_id: schedule.subject_id,
+            teacher: schedule.teacher,
+            notes: schedule.notes,
+            homework: schedule.homework,
+            lesson_date: newDate.toISOString().split('T')[0]
+          })
+        });
+      }
+
+      toast({ title: 'Успешно!', description: `Скопировано ${schedulesToDuplicate.length} занятий` });
+      loadSchedules();
+      setIsDuplicateDialogOpen(false);
+      setDuplicateWeekDate('');
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось скопировать расписание', variant: 'destructive' });
     }
   };
 
@@ -685,6 +735,42 @@ export default function Index() {
                       )}
                     </div>
                   </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDuplicateDialogOpen} onOpenChange={(open) => {
+              setIsDuplicateDialogOpen(open);
+              if (!open) setDuplicateWeekDate('');
+            }}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-purple-500 to-pink-600 hover:opacity-90 transition-all shadow-lg">
+                  <Icon name="Copy" size={18} className="mr-2" />
+                  Дублировать неделю
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Дублировать расписание на новую неделю</DialogTitle>
+                  <DialogDescription>Выберите дату начала новой недели (понедельник)</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Дата начала новой недели</Label>
+                    <Input
+                      type="date"
+                      value={duplicateWeekDate}
+                      onChange={(e) => setDuplicateWeekDate(e.target.value)}
+                      placeholder="Выберите понедельник"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Все занятия с датами будут скопированы на новую неделю с сохранением времени и домашних заданий
+                    </p>
+                  </div>
+                  <Button onClick={handleDuplicateWeek} className="w-full bg-gradient-to-r from-purple-500 to-pink-600">
+                    <Icon name="Copy" size={18} className="mr-2" />
+                    Скопировать расписание
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
