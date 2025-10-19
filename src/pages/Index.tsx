@@ -656,10 +656,7 @@ export default function Index() {
 
             <Dialog open={isStudentDialogOpen} onOpenChange={setIsStudentDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-secondary to-accent hover:opacity-90 transition-all shadow-lg">
-                  <Icon name="UserPlus" size={18} className="mr-2" />
-                  Добавить ученика
-                </Button>
+                <Button className="bg-gradient-to-r from-secondary to-accent hover:opacity-90 transition-all shadow-lg">Добавить класс</Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
