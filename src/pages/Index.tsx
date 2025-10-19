@@ -533,7 +533,7 @@ export default function Index() {
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center mb-4">
               <Icon name="GraduationCap" size={32} className="text-white" />
             </div>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Расписанин "МБОУ Лицей №22"</CardTitle>
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Расписание "МБОУ Лицей №22" </CardTitle>
             <CardDescription>Вход в систему</CardDescription>
           </CardHeader>
           <CardContent>
