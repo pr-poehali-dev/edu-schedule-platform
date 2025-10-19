@@ -329,11 +329,27 @@ export default function Index() {
         const filterDate = new Date(selectedDateFilter);
         filterDate.setHours(0, 0, 0, 0);
         
+        if (user?.role === 'student') {
+          const dayOfWeek = filterDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+          if (schedule.day_of_week !== dayOfWeek) {
+            return false;
+          }
+        }
+        
         if (schedule.lesson_date) {
           const lessonDate = new Date(schedule.lesson_date);
           lessonDate.setHours(0, 0, 0, 0);
           return lessonDate.getTime() === filterDate.getTime();
         }
+        
+        if (user?.role === 'student') {
+          return true;
+        }
+        
+        return false;
+      }
+
+      if (user?.role === 'student') {
         return false;
       }
 
@@ -777,11 +793,13 @@ export default function Index() {
                 <CardContent className="py-12 text-center">
                   <Icon name="CalendarOff" size={48} className="mx-auto text-muted-foreground mb-4" />
                   <p className="text-lg text-muted-foreground">
-                    {selectedDateFilter 
-                      ? 'На выбранную дату занятий не найдено' 
-                      : showOnlyUpcoming 
-                        ? 'Актуальных занятий не найдено' 
-                        : 'Расписание пусто'}
+                    {user.role === 'student' && !selectedDateFilter 
+                      ? 'Выберите дату в календаре, чтобы увидеть расписание' 
+                      : selectedDateFilter 
+                        ? 'На выбранную дату занятий не найдено' 
+                        : showOnlyUpcoming 
+                          ? 'Актуальных занятий не найдено' 
+                          : 'Расписание пусто'}
                   </p>
                 </CardContent>
               </Card>
