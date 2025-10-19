@@ -1,0 +1,20 @@
+{
+  "tests": [
+    {
+      "name": "Get classes",
+      "method": "GET",
+      "path": "/?entity=classes",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "type"
+    },
+    {
+      "name": "Get teachers",
+      "method": "GET",
+      "path": "/?entity=teachers",
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "type"
+    }
+  ]
+}

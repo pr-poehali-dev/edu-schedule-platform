@@ -36,7 +36,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # GET - получить все расписание
         if method == 'GET':
-            query = "SELECT s.*, sub.name as subject_name, sub.color as subject_color FROM schedule s LEFT JOIN subjects sub ON s.subject_id = sub.id ORDER BY s.lesson_date DESC NULLS LAST, CASE s.day_of_week WHEN 'monday' THEN 1 WHEN 'tuesday' THEN 2 WHEN 'wednesday' THEN 3 WHEN 'thursday' THEN 4 WHEN 'friday' THEN 5 WHEN 'saturday' THEN 6 WHEN 'sunday' THEN 7 END, s.time_start"
+            params = event.get('queryStringParameters', {})
+            class_id = params.get('class_id')
+            
+            if class_id:
+                query = f"SELECT s.*, sub.name as subject_name, sub.color as subject_color, c.name as class_name FROM t_p2953915_edu_schedule_platfor.schedule s LEFT JOIN t_p2953915_edu_schedule_platfor.subjects sub ON s.subject_id = sub.id LEFT JOIN t_p2953915_edu_schedule_platfor.classes c ON s.class_id = c.id WHERE s.class_id = {class_id} ORDER BY s.lesson_date DESC NULLS LAST, CASE s.day_of_week WHEN 'monday' THEN 1 WHEN 'tuesday' THEN 2 WHEN 'wednesday' THEN 3 WHEN 'thursday' THEN 4 WHEN 'friday' THEN 5 WHEN 'saturday' THEN 6 WHEN 'sunday' THEN 7 END, s.time_start"
+            else:
+                query = "SELECT s.*, sub.name as subject_name, sub.color as subject_color, c.name as class_name FROM t_p2953915_edu_schedule_platfor.schedule s LEFT JOIN t_p2953915_edu_schedule_platfor.subjects sub ON s.subject_id = sub.id LEFT JOIN t_p2953915_edu_schedule_platfor.classes c ON s.class_id = c.id ORDER BY s.lesson_date DESC NULLS LAST, CASE s.day_of_week WHEN 'monday' THEN 1 WHEN 'tuesday' THEN 2 WHEN 'wednesday' THEN 3 WHEN 'thursday' THEN 4 WHEN 'friday' THEN 5 WHEN 'saturday' THEN 6 WHEN 'sunday' THEN 7 END, s.time_start"
+            
             cur.execute(query)
             schedules = cur.fetchall()
             
@@ -72,13 +79,17 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             teacher = body_data.get('teacher', '')
             notes = body_data.get('notes', '')
             lesson_date = body_data.get('lesson_date', '')
+            class_id = body_data.get('class_id', '')
+            teacher_id = body_data.get('teacher_id', '')
             
             subject_id_value = f"{subject_id}" if subject_id else "NULL"
             lesson_date_value = f"'{lesson_date}'" if lesson_date else "NULL"
+            class_id_value = f"{class_id}" if class_id else "NULL"
+            teacher_id_value = f"{teacher_id}" if teacher_id else "NULL"
             
             query = f"""
-                INSERT INTO schedule (day_of_week, time_start, time_end, subject, subject_id, teacher, notes, lesson_date) 
-                VALUES ('{day}', '{time_start}', '{time_end}', '{subject}', {subject_id_value}, '{teacher}', '{notes}', {lesson_date_value})
+                INSERT INTO t_p2953915_edu_schedule_platfor.schedule (day_of_week, time_start, time_end, subject, subject_id, teacher, notes, lesson_date, class_id, teacher_id) 
+                VALUES ('{day}', '{time_start}', '{time_end}', '{subject}', {subject_id_value}, '{teacher}', '{notes}', {lesson_date_value}, {class_id_value}, {teacher_id_value})
                 RETURNING id
             """
             cur.execute(query)
@@ -110,14 +121,19 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             teacher = body_data.get('teacher', '')
             notes = body_data.get('notes', '')
             lesson_date = body_data.get('lesson_date', '')
+            class_id = body_data.get('class_id', '')
+            teacher_id = body_data.get('teacher_id', '')
             
             subject_id_value = f"{subject_id}" if subject_id else "NULL"
             lesson_date_value = f"'{lesson_date}'" if lesson_date else "NULL"
+            class_id_value = f"{class_id}" if class_id else "NULL"
+            teacher_id_value = f"{teacher_id}" if teacher_id else "NULL"
             
             query = f"""
-                UPDATE schedule 
+                UPDATE t_p2953915_edu_schedule_platfor.schedule 
                 SET day_of_week = '{day}', time_start = '{time_start}', time_end = '{time_end}',
-                    subject = '{subject}', subject_id = {subject_id_value}, teacher = '{teacher}', notes = '{notes}', lesson_date = {lesson_date_value}
+                    subject = '{subject}', subject_id = {subject_id_value}, teacher = '{teacher}', notes = '{notes}', lesson_date = {lesson_date_value},
+                    class_id = {class_id_value}, teacher_id = {teacher_id_value}
                 WHERE id = {schedule_id}
             """
             cur.execute(query)
@@ -138,7 +154,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             params = event.get('queryStringParameters', {})
             schedule_id = params.get('id', '')
             
-            query = f"DELETE FROM schedule WHERE id = {schedule_id}"
+            query = f"DELETE FROM t_p2953915_edu_schedule_platfor.schedule WHERE id = {schedule_id}"
             cur.execute(query)
             conn.commit()
             
