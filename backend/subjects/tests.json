@@ -1,0 +1,25 @@
+{
+  "tests": [
+    {
+      "name": "Получение списка предметов",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Создание предмета",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "name": "Тестовый предмет",
+        "color": "#ff0000"
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "name": "string",
+        "color": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -12,7 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 const API = {
   auth: 'https://functions.poehali.dev/2bd41eec-d707-4ea0-b6c3-a27e34ea7426',
   schedule: 'https://functions.poehali.dev/c4ca2d02-3180-41b7-b275-4bdd0b1bc57c',
-  students: 'https://functions.poehali.dev/dd6e389e-d8ff-4db7-81fa-a08cae762011'
+  students: 'https://functions.poehali.dev/dd6e389e-d8ff-4db7-81fa-a08cae762011',
+  subjects: 'https://functions.poehali.dev/23625e02-9283-47f9-b147-bf10a36eff63'
 };
 
 interface User {
@@ -28,8 +29,16 @@ interface Schedule {
   time_start: string;
   time_end: string;
   subject: string;
+  subject_id?: number;
   teacher: string;
   notes?: string;
+}
+
+interface Subject {
+  id: number;
+  name: string;
+  color: string;
+  created_at: string;
 }
 
 interface Student {
@@ -54,9 +63,12 @@ export default function Index() {
   const [password, setPassword] = useState('');
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
+  const [isSubjectDialogOpen, setIsSubjectDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const { toast } = useToast();
 
   const [scheduleForm, setScheduleForm] = useState({
@@ -64,6 +76,7 @@ export default function Index() {
     time_start: '',
     time_end: '',
     subject: '',
+    subject_id: '',
     teacher: '',
     notes: ''
   });
@@ -74,9 +87,15 @@ export default function Index() {
     full_name: ''
   });
 
+  const [subjectForm, setSubjectForm] = useState({
+    name: '',
+    color: '#3b82f6'
+  });
+
   useEffect(() => {
     if (user) {
       loadSchedules();
+      loadSubjects();
       if (user.role === 'admin') {
         loadStudents();
       }
@@ -123,6 +142,16 @@ export default function Index() {
     }
   };
 
+  const loadSubjects = async () => {
+    try {
+      const response = await fetch(API.subjects);
+      const data = await response.json();
+      setSubjects(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to load subjects', error);
+    }
+  };
+
   const handleCreateSchedule = async () => {
     try {
       const response = await fetch(API.schedule, {
@@ -135,7 +164,7 @@ export default function Index() {
         toast({ title: 'Успешно!', description: 'Расписание создано' });
         loadSchedules();
         setIsScheduleDialogOpen(false);
-        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', teacher: '', notes: '' });
+        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '' });
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось создать расписание', variant: 'destructive' });
@@ -156,7 +185,7 @@ export default function Index() {
         loadSchedules();
         setIsScheduleDialogOpen(false);
         setEditingSchedule(null);
-        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', teacher: '', notes: '' });
+        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '' });
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось обновить расписание', variant: 'destructive' });
@@ -208,6 +237,59 @@ export default function Index() {
     }
   };
 
+  const handleCreateSubject = async () => {
+    try {
+      const response = await fetch(API.subjects, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subjectForm)
+      });
+      const data = await response.json();
+      if (data.id) {
+        toast({ title: 'Успешно!', description: 'Предмет создан' });
+        loadSubjects();
+        setIsSubjectDialogOpen(false);
+        setSubjectForm({ name: '', color: '#3b82f6' });
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось создать предмет', variant: 'destructive' });
+    }
+  };
+
+  const handleUpdateSubject = async () => {
+    if (!editingSubject) return;
+    try {
+      const response = await fetch(API.subjects, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...subjectForm, id: editingSubject.id })
+      });
+      const data = await response.json();
+      if (data.id) {
+        toast({ title: 'Успешно!', description: 'Предмет обновлен' });
+        loadSubjects();
+        setIsSubjectDialogOpen(false);
+        setEditingSubject(null);
+        setSubjectForm({ name: '', color: '#3b82f6' });
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось обновить предмет', variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteSubject = async (id: number) => {
+    try {
+      const response = await fetch(`${API.subjects}?id=${id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        toast({ title: 'Успешно!', description: 'Предмет удален' });
+        loadSubjects();
+      }
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось удалить предмет', variant: 'destructive' });
+    }
+  };
+
   const openEditDialog = (schedule: Schedule) => {
     setEditingSchedule(schedule);
     setScheduleForm({
@@ -215,10 +297,20 @@ export default function Index() {
       time_start: schedule.time_start,
       time_end: schedule.time_end,
       subject: schedule.subject,
+      subject_id: schedule.subject_id?.toString() || '',
       teacher: schedule.teacher,
       notes: schedule.notes || ''
     });
     setIsScheduleDialogOpen(true);
+  };
+
+  const openEditSubjectDialog = (subject: Subject) => {
+    setEditingSubject(subject);
+    setSubjectForm({
+      name: subject.name,
+      color: subject.color
+    });
+    setIsSubjectDialogOpen(true);
   };
 
   const groupedSchedules = schedules.reduce((acc, schedule) => {
@@ -307,7 +399,7 @@ export default function Index() {
               setIsScheduleDialogOpen(open);
               if (!open) {
                 setEditingSchedule(null);
-                setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', teacher: '', notes: '' });
+                setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '' });
               }
             }}>
               <DialogTrigger asChild>
@@ -355,11 +447,31 @@ export default function Index() {
                   </div>
                   <div className="space-y-2">
                     <Label>Предмет</Label>
-                    <Input
-                      placeholder="Название предмета"
-                      value={scheduleForm.subject}
-                      onChange={(e) => setScheduleForm({ ...scheduleForm, subject: e.target.value })}
-                    />
+                    <Select 
+                      value={scheduleForm.subject_id} 
+                      onValueChange={(value) => {
+                        const subject = subjects.find(s => s.id.toString() === value);
+                        setScheduleForm({ 
+                          ...scheduleForm, 
+                          subject_id: value,
+                          subject: subject?.name || ''
+                        });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите предмет" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subjects.map(subject => (
+                          <SelectItem key={subject.id} value={subject.id.toString()}>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: subject.color }}></div>
+                              {subject.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Преподаватель</Label>
@@ -383,6 +495,117 @@ export default function Index() {
                   >
                     {editingSchedule ? 'Сохранить изменения' : 'Создать'}
                   </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isSubjectDialogOpen} onOpenChange={(open) => {
+              setIsSubjectDialogOpen(open);
+              if (!open) {
+                setEditingSubject(null);
+                setSubjectForm({ name: '', color: '#3b82f6' });
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-green-500 to-teal-500 hover:opacity-90 transition-all shadow-lg">
+                  <Icon name="BookOpen" size={18} className="mr-2" />
+                  Управление предметами
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Управление предметами</DialogTitle>
+                  <DialogDescription>Создавайте и редактируйте школьные предметы</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6">
+                  <div className="space-y-4 p-4 bg-slate-50 rounded-lg">
+                    <h3 className="font-semibold text-lg">{editingSubject ? 'Редактировать предмет' : 'Создать новый предмет'}</h3>
+                    <div className="space-y-2">
+                      <Label>Название предмета</Label>
+                      <Input
+                        placeholder="Например: Математика"
+                        value={subjectForm.name}
+                        onChange={(e) => setSubjectForm({ ...subjectForm, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Цвет</Label>
+                      <div className="flex gap-2 items-center">
+                        <Input
+                          type="color"
+                          value={subjectForm.color}
+                          onChange={(e) => setSubjectForm({ ...subjectForm, color: e.target.value })}
+                          className="w-20 h-10"
+                        />
+                        <Input
+                          type="text"
+                          value={subjectForm.color}
+                          onChange={(e) => setSubjectForm({ ...subjectForm, color: e.target.value })}
+                          placeholder="#3b82f6"
+                          className="flex-1"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      onClick={editingSubject ? handleUpdateSubject : handleCreateSubject}
+                      className="w-full bg-gradient-to-r from-green-500 to-teal-500"
+                    >
+                      {editingSubject ? 'Сохранить изменения' : 'Создать предмет'}
+                    </Button>
+                    {editingSubject && (
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setEditingSubject(null);
+                          setSubjectForm({ name: '', color: '#3b82f6' });
+                        }}
+                        className="w-full"
+                      >
+                        Отменить редактирование
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-lg">Список предметов ({subjects.length})</h3>
+                    <div className="grid gap-2 max-h-96 overflow-y-auto">
+                      {subjects.map((subject) => (
+                        <Card key={subject.id} className="animate-fade-in">
+                          <CardContent className="flex items-center justify-between p-4">
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-6 h-6 rounded-full shadow-md" 
+                                style={{ backgroundColor: subject.color }}
+                              ></div>
+                              <div>
+                                <p className="font-medium">{subject.name}</p>
+                                <p className="text-xs text-muted-foreground">{subject.color}</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openEditSubjectDialog(subject)}
+                              >
+                                <Icon name="Edit" size={16} />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDeleteSubject(subject.id)}
+                              >
+                                <Icon name="Trash2" size={16} />
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {subjects.length === 0 && (
+                        <p className="text-center text-muted-foreground py-8">Предметы пока не созданы</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>

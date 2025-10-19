@@ -36,7 +36,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # GET - получить все расписание
         if method == 'GET':
-            query = "SELECT * FROM schedule ORDER BY CASE day_of_week WHEN 'monday' THEN 1 WHEN 'tuesday' THEN 2 WHEN 'wednesday' THEN 3 WHEN 'thursday' THEN 4 WHEN 'friday' THEN 5 WHEN 'saturday' THEN 6 WHEN 'sunday' THEN 7 END, time_start"
+            query = "SELECT s.*, sub.name as subject_name, sub.color as subject_color FROM schedule s LEFT JOIN subjects sub ON s.subject_id = sub.id ORDER BY CASE s.day_of_week WHEN 'monday' THEN 1 WHEN 'tuesday' THEN 2 WHEN 'wednesday' THEN 3 WHEN 'thursday' THEN 4 WHEN 'friday' THEN 5 WHEN 'saturday' THEN 6 WHEN 'sunday' THEN 7 END, s.time_start"
             cur.execute(query)
             schedules = cur.fetchall()
             
@@ -66,12 +66,15 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             time_start = body_data.get('time_start', '')
             time_end = body_data.get('time_end', '')
             subject = body_data.get('subject', '')
+            subject_id = body_data.get('subject_id', '')
             teacher = body_data.get('teacher', '')
             notes = body_data.get('notes', '')
             
+            subject_id_value = f"{subject_id}" if subject_id else "NULL"
+            
             query = f"""
-                INSERT INTO schedule (day_of_week, time_start, time_end, subject, teacher, notes) 
-                VALUES ('{day}', '{time_start}', '{time_end}', '{subject}', '{teacher}', '{notes}')
+                INSERT INTO schedule (day_of_week, time_start, time_end, subject, subject_id, teacher, notes) 
+                VALUES ('{day}', '{time_start}', '{time_end}', '{subject}', {subject_id_value}, '{teacher}', '{notes}')
                 RETURNING id
             """
             cur.execute(query)
@@ -99,13 +102,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             time_start = body_data.get('time_start', '')
             time_end = body_data.get('time_end', '')
             subject = body_data.get('subject', '')
+            subject_id = body_data.get('subject_id', '')
             teacher = body_data.get('teacher', '')
             notes = body_data.get('notes', '')
+            
+            subject_id_value = f"{subject_id}" if subject_id else "NULL"
             
             query = f"""
                 UPDATE schedule 
                 SET day_of_week = '{day}', time_start = '{time_start}', time_end = '{time_end}',
-                    subject = '{subject}', teacher = '{teacher}', notes = '{notes}'
+                    subject = '{subject}', subject_id = {subject_id_value}, teacher = '{teacher}', notes = '{notes}'
                 WHERE id = {schedule_id}
             """
             cur.execute(query)
