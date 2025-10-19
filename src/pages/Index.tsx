@@ -709,34 +709,57 @@ export default function Index() {
                 Расписание занятий
               </h2>
               
-              <div className="flex flex-wrap gap-3 items-center">
-                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border shadow-sm">
-                  <input
-                    type="checkbox"
-                    id="upcoming-filter"
-                    checked={showOnlyUpcoming}
-                    onChange={(e) => {
-                      setShowOnlyUpcoming(e.target.checked);
-                      if (e.target.checked) setSelectedDateFilter('');
-                    }}
-                    className="w-4 h-4 text-primary rounded focus:ring-2 focus:ring-primary cursor-pointer"
-                  />
-                  <label htmlFor="upcoming-filter" className="text-sm font-medium cursor-pointer whitespace-nowrap">
-                    Только актуальные
-                  </label>
+              {user.role === 'admin' ? (
+                <div className="flex flex-wrap gap-3 items-center">
+                  <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border shadow-sm">
+                    <input
+                      type="checkbox"
+                      id="upcoming-filter"
+                      checked={showOnlyUpcoming}
+                      onChange={(e) => {
+                        setShowOnlyUpcoming(e.target.checked);
+                        if (e.target.checked) setSelectedDateFilter('');
+                      }}
+                      className="w-4 h-4 text-primary rounded focus:ring-2 focus:ring-primary cursor-pointer"
+                    />
+                    <label htmlFor="upcoming-filter" className="text-sm font-medium cursor-pointer whitespace-nowrap">
+                      Только актуальные
+                    </label>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border shadow-sm">
+                    <Icon name="Search" size={16} className="text-muted-foreground" />
+                    <Input
+                      type="date"
+                      value={selectedDateFilter}
+                      onChange={(e) => {
+                        setSelectedDateFilter(e.target.value);
+                        if (e.target.value) setShowOnlyUpcoming(false);
+                      }}
+                      className="border-0 h-auto p-0 focus-visible:ring-0 text-sm w-36"
+                      placeholder="Фильтр по дате"
+                    />
+                    {selectedDateFilter && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedDateFilter('')}
+                        className="h-5 w-5 p-0"
+                      >
+                        <Icon name="X" size={14} />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                
+              ) : (
                 <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border shadow-sm">
-                  <Icon name="Search" size={16} className="text-muted-foreground" />
+                  <Icon name="Calendar" size={16} className="text-muted-foreground" />
                   <Input
                     type="date"
                     value={selectedDateFilter}
-                    onChange={(e) => {
-                      setSelectedDateFilter(e.target.value);
-                      if (e.target.value) setShowOnlyUpcoming(false);
-                    }}
+                    onChange={(e) => setSelectedDateFilter(e.target.value)}
                     className="border-0 h-auto p-0 focus-visible:ring-0 text-sm w-36"
-                    placeholder="Фильтр по дате"
+                    placeholder="Выберите дату"
                   />
                   {selectedDateFilter && (
                     <Button
@@ -749,7 +772,7 @@ export default function Index() {
                     </Button>
                   )}
                 </div>
-              </div>
+              )}
             </div>
 
             {Object.keys(groupedSchedules).length === 0 && (
