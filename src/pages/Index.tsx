@@ -13,68 +13,14 @@ const API = {
   auth: 'https://functions.poehali.dev/2bd41eec-d707-4ea0-b6c3-a27e34ea7426',
   schedule: 'https://functions.poehali.dev/c4ca2d02-3180-41b7-b275-4bdd0b1bc57c',
   students: 'https://functions.poehali.dev/dd6e389e-d8ff-4db7-81fa-a08cae762011',
-  subjects: 'https://functions.poehali.dev/23625e02-9283-47f9-b147-bf10a36eff63',
-  school: 'https://functions.poehali.dev/6a468512-422f-48c5-9d89-1548ce74bf45'
+  subjects: 'https://functions.poehali.dev/23625e02-9283-47f9-b147-bf10a36eff63'
 };
 
 interface User {
   id: number;
   email: string;
-  role: 'admin' | 'student' | 'teacher';
+  role: 'admin' | 'student';
   full_name?: string;
-  class_id?: number;
-  subject_id?: number;
-}
-
-interface Class {
-  id: number;
-  name: string;
-  description?: string;
-  student_count?: number;
-}
-
-interface Teacher {
-  id: number;
-  email: string;
-  full_name?: string;
-  subject_id?: number;
-  subject_name?: string;
-  subject_color?: string;
-}
-
-interface Homework {
-  id: number;
-  class_id: number;
-  subject_id: number;
-  teacher_id: number;
-  title: string;
-  description?: string;
-  due_date?: string;
-  subject_name?: string;
-  subject_color?: string;
-  class_name?: string;
-  teacher_name?: string;
-}
-
-interface Grade {
-  id: number;
-  student_id: number;
-  subject_id: number;
-  teacher_id: number;
-  grade: number;
-  comment?: string;
-  lesson_date?: string;
-  subject_name?: string;
-  subject_color?: string;
-  student_name?: string;
-  teacher_name?: string;
-}
-
-interface GradeStats {
-  subject_name: string;
-  subject_color: string;
-  avg_grade: number;
-  grade_count: number;
 }
 
 interface Schedule {
@@ -89,9 +35,6 @@ interface Schedule {
   teacher: string;
   notes?: string;
   lesson_date?: string;
-  class_id?: number;
-  class_name?: string;
-  teacher_id?: number;
 }
 
 interface Subject {
@@ -105,8 +48,6 @@ interface Student {
   id: number;
   email: string;
   full_name?: string;
-  class_id?: number;
-  class_name?: string;
 }
 
 const DAYS = [
@@ -126,21 +67,12 @@ export default function Index() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [homework, setHomework] = useState<Homework[]>([]);
-  const [grades, setGrades] = useState<Grade[]>([]);
-  const [gradeStats, setGradeStats] = useState<GradeStats[]>([]);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
   const [isSubjectDialogOpen, setIsSubjectDialogOpen] = useState(false);
-  const [isClassDialogOpen, setIsClassDialogOpen] = useState(false);
-  const [isTeacherDialogOpen, setIsTeacherDialogOpen] = useState(false);
-  const [isHomeworkDialogOpen, setIsHomeworkDialogOpen] = useState(false);
-  const [isGradeDialogOpen, setIsGradeDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
-  const [showOnlyUpcoming, setShowOnlyUpcoming] = useState(false);
+  const [showOnlyUpcoming, setShowOnlyUpcoming] = useState(true);
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('');
   const { toast } = useToast();
 
@@ -152,16 +84,13 @@ export default function Index() {
     subject_id: '',
     teacher: '',
     notes: '',
-    lesson_date: '',
-    class_id: '',
-    teacher_id: ''
+    lesson_date: ''
   });
 
   const [studentForm, setStudentForm] = useState({
     email: '',
     password: '',
-    full_name: '',
-    class_id: ''
+    full_name: ''
   });
 
   const [subjectForm, setSubjectForm] = useState({
@@ -169,50 +98,12 @@ export default function Index() {
     color: '#3b82f6'
   });
 
-  const [classForm, setClassForm] = useState({
-    name: '',
-    description: ''
-  });
-
-  const [teacherForm, setTeacherForm] = useState({
-    email: '',
-    password: 'teacher123',
-    full_name: '',
-    subject_id: ''
-  });
-
-  const [homeworkForm, setHomeworkForm] = useState({
-    class_id: '',
-    subject_id: '',
-    title: '',
-    description: '',
-    due_date: ''
-  });
-
-  const [gradeForm, setGradeForm] = useState({
-    student_id: '',
-    subject_id: '',
-    grade: 5,
-    comment: '',
-    lesson_date: ''
-  });
-
   useEffect(() => {
     if (user) {
       loadSchedules();
       loadSubjects();
-      loadClasses();
       if (user.role === 'admin') {
         loadStudents();
-        loadTeachers();
-      }
-      if (user.role === 'teacher') {
-        loadStudents();
-        loadHomework();
-      }
-      if (user.role === 'student') {
-        loadHomework();
-        loadGrades();
       }
     }
   }, [user]);
@@ -239,11 +130,7 @@ export default function Index() {
 
   const loadSchedules = async () => {
     try {
-      let url = API.schedule;
-      if (user?.role === 'student' && user.class_id) {
-        url = `${API.schedule}?class_id=${user.class_id}`;
-      }
-      const response = await fetch(url);
+      const response = await fetch(API.schedule);
       const data = await response.json();
       setSchedules(data.schedules || []);
     } catch (error) {
@@ -271,58 +158,6 @@ export default function Index() {
     }
   };
 
-  const loadClasses = async () => {
-    try {
-      const response = await fetch(`${API.school}?entity=classes`);
-      const data = await response.json();
-      setClasses(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to load classes', error);
-    }
-  };
-
-  const loadTeachers = async () => {
-    try {
-      const response = await fetch(`${API.school}?entity=teachers`);
-      const data = await response.json();
-      setTeachers(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to load teachers', error);
-    }
-  };
-
-  const loadHomework = async () => {
-    try {
-      let url = `${API.school}?entity=homework`;
-      if (user?.role === 'student' && user.class_id) {
-        url += `&class_id=${user.class_id}`;
-      } else if (user?.role === 'teacher') {
-        url += `&teacher_id=${user.id}`;
-      }
-      const response = await fetch(url);
-      const data = await response.json();
-      setHomework(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Failed to load homework', error);
-    }
-  };
-
-  const loadGrades = async () => {
-    try {
-      if (user?.role === 'student') {
-        const response = await fetch(`${API.school}?entity=grades&student_id=${user.id}`);
-        const data = await response.json();
-        setGrades(Array.isArray(data) ? data : []);
-        
-        const statsResponse = await fetch(`${API.school}?entity=grades&student_id=${user.id}&stats=true`);
-        const statsData = await statsResponse.json();
-        setGradeStats(Array.isArray(statsData) ? statsData : []);
-      }
-    } catch (error) {
-      console.error('Failed to load grades', error);
-    }
-  };
-
   const handleCreateSchedule = async () => {
     try {
       const response = await fetch(API.schedule, {
@@ -335,7 +170,7 @@ export default function Index() {
         toast({ title: 'Успешно!', description: 'Расписание создано' });
         loadSchedules();
         setIsScheduleDialogOpen(false);
-        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '', class_id: '', teacher_id: '' });
+        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '' });
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось создать расписание', variant: 'destructive' });
@@ -356,7 +191,7 @@ export default function Index() {
         loadSchedules();
         setIsScheduleDialogOpen(false);
         setEditingSchedule(null);
-        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '', class_id: '', teacher_id: '' });
+        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '' });
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось обновить расписание', variant: 'destructive' });
@@ -388,7 +223,7 @@ export default function Index() {
         toast({ title: 'Успешно!', description: 'Ученик создан' });
         loadStudents();
         setIsStudentDialogOpen(false);
-        setStudentForm({ email: '', password: '', full_name: '', class_id: '' });
+        setStudentForm({ email: '', password: '', full_name: '' });
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось создать ученика', variant: 'destructive' });
@@ -471,9 +306,7 @@ export default function Index() {
       subject_id: schedule.subject_id?.toString() || '',
       teacher: schedule.teacher,
       notes: schedule.notes || '',
-      lesson_date: schedule.lesson_date || '',
-      class_id: schedule.class_id?.toString() || '',
-      teacher_id: schedule.teacher_id?.toString() || ''
+      lesson_date: schedule.lesson_date || ''
     });
     setIsScheduleDialogOpen(true);
   };
@@ -490,10 +323,6 @@ export default function Index() {
   const getFilteredSchedules = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    if (user?.role === 'student' && !selectedDateFilter) {
-      return [];
-    }
 
     return schedules.filter(schedule => {
       if (selectedDateFilter) {
@@ -533,7 +362,7 @@ export default function Index() {
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center mb-4">
               <Icon name="GraduationCap" size={32} className="text-white" />
             </div>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Расписание "МБОУ Лицей №22" </CardTitle>
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Электронный дневник "МБОУ Лицей №22"</CardTitle>
             <CardDescription>Вход в систему</CardDescription>
           </CardHeader>
           <CardContent>
@@ -604,7 +433,7 @@ export default function Index() {
               setIsScheduleDialogOpen(open);
               if (!open) {
                 setEditingSchedule(null);
-                setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '', class_id: '', teacher_id: '' });
+                setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '' });
               }
             }}>
               <DialogTrigger asChild>
@@ -695,24 +524,6 @@ export default function Index() {
                       placeholder="Укажите конкретную дату"
                     />
                     <p className="text-xs text-muted-foreground">Оставьте пустым для регулярного занятия по дню недели</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Класс</Label>
-                    <Select 
-                      value={scheduleForm.class_id} 
-                      onValueChange={(value) => setScheduleForm({ ...scheduleForm, class_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите класс" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classes.map(cls => (
-                          <SelectItem key={cls.id} value={cls.id.toString()}>
-                            {cls.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Примечания</Label>
@@ -843,95 +654,6 @@ export default function Index() {
               </DialogContent>
             </Dialog>
 
-            <Dialog open={isClassDialogOpen} onOpenChange={(open) => {
-              setIsClassDialogOpen(open);
-              if (!open) setClassForm({ name: '', description: '' });
-            }}>
-              <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:opacity-90 transition-all shadow-lg">
-                  <Icon name="School" size={18} className="mr-2" />
-                  Управление классами
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Управление классами</DialogTitle>
-                  <DialogDescription>Создавайте и управляйте школьными классами</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Название класса</Label>
-                    <Input
-                      placeholder="Например: 10А, 9Б"
-                      value={classForm.name}
-                      onChange={(e) => setClassForm({ ...classForm, name: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Описание (необязательно)</Label>
-                    <Input
-                      placeholder="Физико-математический"
-                      value={classForm.description}
-                      onChange={(e) => setClassForm({ ...classForm, description: e.target.value })}
-                    />
-                  </div>
-                  <Button onClick={async () => {
-                    try {
-                      const response = await fetch(`${API.school}?entity=classes`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(classForm)
-                      });
-                      const data = await response.json();
-                      if (data.id) {
-                        toast({ title: 'Успешно!', description: 'Класс создан' });
-                        loadClasses();
-                        setClassForm({ name: '', description: '' });
-                      }
-                    } catch (error) {
-                      toast({ title: 'Ошибка', description: 'Не удалось создать класс', variant: 'destructive' });
-                    }
-                  }} className="w-full bg-gradient-to-r from-blue-500 to-purple-600">
-                    Создать класс
-                  </Button>
-                  <div className="space-y-3 mt-6">
-                    <h3 className="font-semibold text-lg">Список классов ({classes.length})</h3>
-                    <div className="grid gap-2 max-h-96 overflow-y-auto">
-                      {classes.map((cls) => (
-                        <Card key={cls.id} className="animate-fade-in">
-                          <CardContent className="flex items-center justify-between p-4">
-                            <div>
-                              <p className="font-medium">{cls.name}</p>
-                              {cls.description && <p className="text-xs text-muted-foreground">{cls.description}</p>}
-                              <p className="text-xs text-muted-foreground mt-1">Учеников: {cls.student_count || 0}</p>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={async () => {
-                                try {
-                                  await fetch(`${API.school}?entity=classes&id=${cls.id}`, { method: 'DELETE' });
-                                  toast({ title: 'Успешно!', description: 'Класс удален' });
-                                  loadClasses();
-                                } catch (error) {
-                                  toast({ title: 'Ошибка', description: 'Не удалось удалить класс', variant: 'destructive' });
-                                }
-                              }}
-                            >
-                              <Icon name="Trash2" size={16} />
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      ))}
-                      {classes.length === 0 && (
-                        <p className="text-center text-muted-foreground py-8">Классы пока не созданы</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-
             <Dialog open={isStudentDialogOpen} onOpenChange={setIsStudentDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-gradient-to-r from-secondary to-accent hover:opacity-90 transition-all shadow-lg">
@@ -969,24 +691,6 @@ export default function Index() {
                       value={studentForm.full_name}
                       onChange={(e) => setStudentForm({ ...studentForm, full_name: e.target.value })}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Класс</Label>
-                    <Select 
-                      value={studentForm.class_id} 
-                      onValueChange={(value) => setStudentForm({ ...studentForm, class_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите класс" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {classes.map(cls => (
-                          <SelectItem key={cls.id} value={cls.id.toString()}>
-                            {cls.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
                   <Button onClick={handleCreateStudent} className="w-full bg-gradient-to-r from-secondary to-accent">
                     Создать
@@ -1048,31 +752,24 @@ export default function Index() {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col gap-2 w-full">
-                  <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border shadow-sm">
-                    <Icon name="Calendar" size={16} className="text-muted-foreground" />
-                    <Input
-                      type="date"
-                      value={selectedDateFilter}
-                      onChange={(e) => setSelectedDateFilter(e.target.value)}
-                      className="border-0 h-auto p-0 focus-visible:ring-0 text-sm w-36"
-                      placeholder="Выберите дату"
-                    />
-                    {selectedDateFilter && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setSelectedDateFilter('')}
-                        className="h-5 w-5 p-0"
-                      >
-                        <Icon name="X" size={14} />
-                      </Button>
-                    )}
-                  </div>
-                  {!selectedDateFilter && (
-                    <p className="text-sm text-muted-foreground italic">
-                      Выберите дату, чтобы увидеть расписание
-                    </p>
+                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border shadow-sm">
+                  <Icon name="Calendar" size={16} className="text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={selectedDateFilter}
+                    onChange={(e) => setSelectedDateFilter(e.target.value)}
+                    className="border-0 h-auto p-0 focus-visible:ring-0 text-sm w-36"
+                    placeholder="Выберите дату"
+                  />
+                  {selectedDateFilter && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedDateFilter('')}
+                      className="h-5 w-5 p-0"
+                    >
+                      <Icon name="X" size={14} />
+                    </Button>
                   )}
                 </div>
               )}
@@ -1083,13 +780,11 @@ export default function Index() {
                 <CardContent className="py-12 text-center">
                   <Icon name="CalendarOff" size={48} className="mx-auto text-muted-foreground mb-4" />
                   <p className="text-lg text-muted-foreground">
-                    {user.role === 'student' && !selectedDateFilter
-                      ? 'Выберите дату в календаре, чтобы увидеть расписание на этот день'
-                      : selectedDateFilter 
-                        ? 'На выбранную дату занятий не найдено' 
-                        : showOnlyUpcoming 
-                          ? 'Актуальных занятий не найдено' 
-                          : 'Расписание пусто'}
+                    {selectedDateFilter 
+                      ? 'На выбранную дату занятий не найдено' 
+                      : showOnlyUpcoming 
+                        ? 'Актуальных занятий не найдено' 
+                        : 'Расписание пусто'}
                   </p>
                 </CardContent>
               </Card>

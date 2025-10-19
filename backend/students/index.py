@@ -36,13 +36,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         # GET - получить всех учеников
         if method == 'GET':
-            query = """
-                SELECT u.id, u.email, u.full_name, u.created_at, u.class_id, c.name as class_name
-                FROM t_p2953915_edu_schedule_platfor.users u
-                LEFT JOIN t_p2953915_edu_schedule_platfor.classes c ON u.class_id = c.id
-                WHERE u.role = 'student' 
-                ORDER BY u.created_at DESC
-            """
+            query = "SELECT id, email, full_name, created_at FROM users WHERE role = 'student' ORDER BY created_at DESC"
             cur.execute(query)
             students = cur.fetchall()
             
@@ -67,20 +61,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             email = body_data.get('email', '').replace("'", "''")
             password = body_data.get('password', '').replace("'", "''")
             full_name = body_data.get('full_name', '').replace("'", "''")
-            class_id = body_data.get('class_id')
             
-            if class_id:
-                query = f"""
-                    INSERT INTO t_p2953915_edu_schedule_platfor.users (email, password, role, full_name, class_id) 
-                    VALUES ('{email}', '{password}', 'student', '{full_name}', {class_id})
-                    RETURNING id
-                """
-            else:
-                query = f"""
-                    INSERT INTO t_p2953915_edu_schedule_platfor.users (email, password, role, full_name) 
-                    VALUES ('{email}', '{password}', 'student', '{full_name}')
-                    RETURNING id
-                """
+            query = f"""
+                INSERT INTO users (email, password, role, full_name) 
+                VALUES ('{email}', '{password}', 'student', '{full_name}')
+                RETURNING id
+            """
             cur.execute(query)
             result = cur.fetchone()
             conn.commit()
@@ -103,7 +89,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             params = event.get('queryStringParameters', {})
             student_id = params.get('id', '')
             
-            query = f"DELETE FROM t_p2953915_edu_schedule_platfor.users WHERE id = {student_id} AND role = 'student'"
+            query = f"DELETE FROM users WHERE id = {student_id} AND role = 'student'"
             cur.execute(query)
             conn.commit()
             
