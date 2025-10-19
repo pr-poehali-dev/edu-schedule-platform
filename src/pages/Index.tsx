@@ -30,8 +30,11 @@ interface Schedule {
   time_end: string;
   subject: string;
   subject_id?: number;
+  subject_name?: string;
+  subject_color?: string;
   teacher: string;
   notes?: string;
+  lesson_date?: string;
 }
 
 interface Subject {
@@ -78,7 +81,8 @@ export default function Index() {
     subject: '',
     subject_id: '',
     teacher: '',
-    notes: ''
+    notes: '',
+    lesson_date: ''
   });
 
   const [studentForm, setStudentForm] = useState({
@@ -164,7 +168,7 @@ export default function Index() {
         toast({ title: 'Успешно!', description: 'Расписание создано' });
         loadSchedules();
         setIsScheduleDialogOpen(false);
-        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '' });
+        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '' });
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось создать расписание', variant: 'destructive' });
@@ -185,7 +189,7 @@ export default function Index() {
         loadSchedules();
         setIsScheduleDialogOpen(false);
         setEditingSchedule(null);
-        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '' });
+        setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '' });
       }
     } catch (error) {
       toast({ title: 'Ошибка', description: 'Не удалось обновить расписание', variant: 'destructive' });
@@ -299,7 +303,8 @@ export default function Index() {
       subject: schedule.subject,
       subject_id: schedule.subject_id?.toString() || '',
       teacher: schedule.teacher,
-      notes: schedule.notes || ''
+      notes: schedule.notes || '',
+      lesson_date: schedule.lesson_date || ''
     });
     setIsScheduleDialogOpen(true);
   };
@@ -399,7 +404,7 @@ export default function Index() {
               setIsScheduleDialogOpen(open);
               if (!open) {
                 setEditingSchedule(null);
-                setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '' });
+                setScheduleForm({ day_of_week: 'monday', time_start: '', time_end: '', subject: '', subject_id: '', teacher: '', notes: '', lesson_date: '' });
               }
             }}>
               <DialogTrigger asChild>
@@ -480,6 +485,16 @@ export default function Index() {
                       value={scheduleForm.teacher}
                       onChange={(e) => setScheduleForm({ ...scheduleForm, teacher: e.target.value })}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Дата занятия (необязательно)</Label>
+                    <Input
+                      type="date"
+                      value={scheduleForm.lesson_date}
+                      onChange={(e) => setScheduleForm({ ...scheduleForm, lesson_date: e.target.value })}
+                      placeholder="Укажите конкретную дату"
+                    />
+                    <p className="text-xs text-muted-foreground">Оставьте пустым для регулярного занятия по дню недели</p>
                   </div>
                   <div className="space-y-2">
                     <Label>Примечания</Label>
@@ -680,11 +695,19 @@ export default function Index() {
                     {daySchedules.map(schedule => (
                       <div key={schedule.id} className="p-4 border rounded-lg hover:border-primary transition-all hover:shadow-md bg-gradient-to-r from-white to-purple-50/30">
                         <div className="flex justify-between items-start mb-3">
-                          <div className="flex items-center gap-2">
-                            <Icon name="Clock" size={18} className="text-secondary" />
-                            <span className="font-semibold text-lg">
-                              {schedule.time_start} - {schedule.time_end}
-                            </span>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <Icon name="Clock" size={18} className="text-secondary" />
+                              <span className="font-semibold text-lg">
+                                {schedule.time_start} - {schedule.time_end}
+                              </span>
+                            </div>
+                            {schedule.lesson_date && (
+                              <div className="flex items-center gap-2 text-sm text-orange-600 font-medium">
+                                <Icon name="CalendarDays" size={14} />
+                                <span>{new Date(schedule.lesson_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                              </div>
+                            )}
                           </div>
                           {user.role === 'admin' && (
                             <div className="flex gap-2">
@@ -697,7 +720,12 @@ export default function Index() {
                             </div>
                           )}
                         </div>
-                        <h4 className="font-bold text-xl mb-2 text-primary">{schedule.subject}</h4>
+                        <div className="flex items-center gap-2 mb-2">
+                          {schedule.subject_color && (
+                            <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: schedule.subject_color }}></div>
+                          )}
+                          <h4 className="font-bold text-xl text-primary">{schedule.subject_name || schedule.subject}</h4>
+                        </div>
                         <div className="flex items-center gap-2 text-muted-foreground mb-2">
                           <Icon name="User" size={16} />
                           <span>{schedule.teacher}</span>
